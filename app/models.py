@@ -21,7 +21,7 @@ class Order(models.Model):
 
 class OrderLog(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='logs')
-    event = models.CharField(max_length=1, choices=Event.choices)
+    event = models.CharField(max_length=2, choices=Event.choices)
     recorded_time = models.DateTimeField(auto_now_add=True)
     additional_info = models.CharField(max_length=256, blank=True, null=True)
 

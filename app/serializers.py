@@ -17,10 +17,10 @@ class OrderCommentSerializer(serializers.ModelSerializer):
 
 
 
-class OrderSerializer(serializers.ModelSerializer):
+class OrderSimpleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
-        fields = ('title', 'status', 'stage', 'executor',)
+        fields = ('pk', 'title', 'status', 'executor',)
 
 
 
@@ -30,3 +30,4 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = '__all__'
+        read_only_fields = ('owner', 'executor',)
