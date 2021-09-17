@@ -5,7 +5,7 @@ from .choices import UserRole
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    role = models.CharField(max_length=1, choices=UserRole.choices)
+    role = models.CharField(max_length=1, choices=UserRole.choices, blank=True, null=True)
 
     def __str__(self):
         return self.user.username + ' user profile'
