@@ -27,6 +27,7 @@ class OrderSimpleSerializer(serializers.ModelSerializer):
 class OrderDetailSerializer(serializers.ModelSerializer):
     logs = OrderLogSerializer(many=True, read_only=True)
     comments = OrderCommentSerializer(many=True, read_only=True)
+    
     class Meta:
         model = Order
         fields = '__all__'

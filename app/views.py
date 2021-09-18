@@ -1,14 +1,15 @@
 from .choices import Status
-from rest_framework import viewsets
-from .models import Order, OrderLog
-from .serializers import OrderSimpleSerializer, OrderDetailSerializer
-from .permissions import AllowOnlyForAdminOwnerOrExecutor, UpdateOnlyAdminOrExecutor
+from rest_framework import viewsets, mixins
+from .models import Order, OrderLog, OrderComment
+from .serializers import OrderCommentSerializer, OrderLogSerializer, OrderSimpleSerializer, OrderDetailSerializer
+from .permissions import AllowOnlyForAdminOwnerOrExecutor, UpdateOnlyAdminOrExecutor, AllowCommentsOnlyForAdminOwnerOrExecutorOfOrder, DeleteOrUpdateOnlyForOwnerOrAdmin
 from rest_framework.permissions import IsAuthenticated
 from users.choices import UserRole
 from django.db.models import Case, When, Value, Q, Count, DateField, DurationField, F, Subquery, OuterRef
 from django.db.models.functions import Now, TruncDate
 from django.db.models.expressions import Subquery
 from django.contrib.auth.models import User
+
 
 
 
@@ -21,12 +22,20 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Order.objects.all()
+        """
+        Admin has no profile 
+        his role is recognizable by is_superuser property and this is not necessery.
+        This is why app has to check if profile prop exists
+        """
         if hasattr(self.request.user, 'profile'):
             if self.request.user.profile.role == UserRole.CLIENT:
+                #client receives only own orders
                 return queryset.filter(owner=self.request.user)
             elif self.request.user.profile.role == UserRole.PLANNER:
+                #planner receives only orders with status=PAYMENT_AWAIT
                 return queryset.filter(status=Status.PAYMENT_AWAIT)
             elif self.request.user.profile.role == UserRole.EXECUTOR:
+                #executor receives only orders that executes
                 queryset = queryset.filter(executor=self.request.user)
 
         """
@@ -77,6 +86,10 @@ class OrderViewSet(viewsets.ModelViewSet):
             'time_left'
         )
 
+    def update(self, request, *args, **kwargs):
+        #coming coon
+        pass
+
 
     """
     After save a object is necessery to assign it to executor with
@@ -100,5 +113,22 @@ class OrderViewSet(viewsets.ModelViewSet):
             owner=self.request.user,
             executor=executor
         )
+
+
+
+
+
+class OrderCommentViewSet(viewsets.ModelViewSet):
+    serializer_class = OrderCommentSerializer
+    permissions_classes = (
+        IsAuthenticated, 
+        AllowCommentsOnlyForAdminOwnerOrExecutorOfOrder,
+        DeleteOrUpdateOnlyForOwnerOrAdmin,
+    )
+
+    def get_queryset(self):
+        order_pk = self.kwargs['parent_lookup_order']
+        return OrderComment.objects.filter(order=order_pk)
+
 
 

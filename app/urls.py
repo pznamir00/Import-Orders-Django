@@ -1,10 +1,19 @@
 from django.urls import include, path
-from rest_framework import routers
+from rest_framework_extensions.routers import ExtendedSimpleRouter
 from . import views
 
-router = routers.SimpleRouter()
-router.register('orders', views.OrderViewSet, basename='orders')
+router = ExtendedSimpleRouter()
+(
+    router.register(
+        r'orders', 
+        views.OrderViewSet, 
+        basename='orders'
+    ).register(
+        r'comments', 
+        views.OrderCommentViewSet, 
+        basename='comments', 
+        parents_query_lookups=['order']
+    )
+)
 
-urlpatterns = [
-    path('', include(router.urls))
-]
+urlpatterns = router.urls
