@@ -43,6 +43,6 @@ class Event(models.TextChoices):
     SET_LOG_END_DATE = '10', 'Logistic end date was set'
     SET_TRANS_END_DATE = '11', 'Transport end date was set'
     SET_DONE_END_DATE = '12', 'Process end date was set'
-    SET_COMPLAINT_END_DATE = '12', 'Complaint end date was set'
+    SET_COMPLAINT_END_DATE = '13', 'Complaint end date was set'
 
 

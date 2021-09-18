@@ -12,7 +12,7 @@ class Order(models.Model):
     stage = models.CharField(max_length=1, choices=Stage.choices, blank=True, null=True)
     origin = models.CharField(max_length=1, choices=Origin.choices)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
-    executor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    executor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='executing_orders')
 
     def __str__(self):
         return self.title
@@ -23,7 +23,7 @@ class OrderLog(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='logs')
     event = models.CharField(max_length=2, choices=Event.choices)
     recorded_time = models.DateTimeField(auto_now_add=True)
-    additional_info = models.CharField(max_length=256, blank=True, null=True)
+    deadline = models.DateField(blank=True, null=True)
 
     def __str__(self):
         return 'Order #' + str(self.order.pk) + f' Log ({self.event})'
