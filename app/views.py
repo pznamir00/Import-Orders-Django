@@ -1,5 +1,6 @@
-from .choices import Status
-from rest_framework import viewsets
+from .choices import Status, Event, Origin, Priority
+from rest_framework import viewsets, generics
+from rest_framework.response import Response
 from .models import Order, Log, Comment
 from .serializers import *
 from .permissions import *
@@ -9,22 +10,23 @@ from django.db.models import Case, When, Value, Q, Count, DateField, DurationFie
 from django.db.models.functions import Now, TruncDate
 from django.db.models.expressions import Subquery
 from django.contrib.auth.models import User
+from .helpers import create_log
 
 
 
 
 
 class OrderViewSet(viewsets.ModelViewSet):
-    permission_classes = (IsAuthenticated, DenyForOtherClientsAndExecutors, UpdateBaseOnRole,)
+    permission_classes = (IsAuthenticated, DenyForOtherClientsAndExecutors, UpdateBasedOnRole,)
 
     def get_serializer_class(self):
-        if self.request.method in UpdateBaseOnRole.update_methods:
-            if hasattr('profile', self.request.user):
-                if self.request.user.profile == UserRole.PLANNER:
+        if self.request.method in UpdateBasedOnRole.update_methods:
+            if hasattr(self.request.user, 'profile'):
+                if self.request.user.profile.role == UserRole.PLANNER:
                     return OrderPlannerUpdateSerializer
-                elif self.request.user.profile == UserRole.MANAGEMENT:
+                if self.request.user.profile.role == UserRole.MANAGEMENT:
                     return OrderManagementUpdateSerializer
-                elif self.request.user.profile == UserRole.PLANNER:
+                if self.request.user.profile.role == UserRole.EXECUTOR:
                     return OrderExecutorUpdateSerializer
         return OrderSimpleSerializer if self.action == 'list' else OrderSerializer
 
@@ -48,7 +50,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             elif self.request.user.profile.role == UserRole.EXECUTOR:
                 #executor receives only orders that executes
                 queryset = queryset.filter(executor=self.request.user)
-
         """
         For admins, executors and management -> sorted orders.
         List of orders must be presented most practic way for executor (and admin for control).
@@ -71,10 +72,10 @@ class OrderViewSet(viewsets.ModelViewSet):
             #getting suitable num of Event base on stage
             #query gotta find appropriate OrderLog dependent to stage because has to get deadline from this row
             lookup_event=Case(
-                When(stage=1, then=Value(9)),
-                When(stage=2, then=Value(10)),
-                When(stage=3, then=Value(11)),
-                When(stage=4, then=Value(12)),
+                When(stage='1', then=Value('9')),
+                When(stage='2', then=Value('10')),
+                When(stage='3', then=Value('11')),
+                When(stage='4', then=Value('12')),
                 default=Value(None),
             ),
             #retrieve appropriate row and deadline from it
@@ -94,18 +95,16 @@ class OrderViewSet(viewsets.ModelViewSet):
         ).order_by(
             'await_for_payment_first',
             'with_stage_first',
-            'time_left'
+            'time_left',
             '-priority'
         )
-
-
-    """
-    After save a object is necessery to assign it to executor with
-    the least number of current executing_orders 
-    (executing_orders that status is not 5 and 6)
-    """
+        
     def perform_create(self, serializer):
-        #executor - user with the least number of orders
+        """
+        After save a object is necessery to assign it to executor with
+        the least number of current executing_orders 
+        (executing_orders that status is not 5 and 6)
+        """
         executor = User.objects.filter(
             profile__role='2'
         ).annotate(
@@ -117,10 +116,13 @@ class OrderViewSet(viewsets.ModelViewSet):
             'num_of_active_executing_orders'
         ).first()
         #save object
-        return serializer.save(
+        obj = serializer.save(
             owner=self.request.user,
             executor=executor
         )
+        #set log
+        create_log(obj, Event.CREATED)
+        return obj
 
 
 
@@ -140,3 +142,32 @@ class OrderCommentViewSet(viewsets.ModelViewSet):
 
 
 
+
+
+class StatusView(generics.RetrieveAPIView):
+    def get(self, request):
+        return Response(Status.choices)
+
+
+
+
+
+class PriorityView(generics.RetrieveAPIView):
+    def get(self, request):
+        return Response(Priority.choices)
+
+
+
+
+
+class StageView(generics.RetrieveAPIView):
+    def get(self, request):
+        return Response(Stage.choices)
+
+
+
+
+
+class OriginView(generics.RetrieveAPIView):
+    def get(self, request):
+        return Response(Origin.choices)

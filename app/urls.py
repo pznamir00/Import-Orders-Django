@@ -16,4 +16,10 @@ router = ExtendedSimpleRouter()
     )
 )
 
-urlpatterns = router.urls
+urlpatterns = [
+    path('statuses/', views.StatusView.as_view()),
+    path('stages/', views.StageView.as_view()),
+    path('priorities/', views.PriorityView.as_view()),
+    path('origins/', views.OriginView.as_view()),
+    path('', include(router.urls))
+]

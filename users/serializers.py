@@ -6,11 +6,11 @@ from .models import UserProfile
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = ('',)
+        fields = ('role',)
 
 
 class UserDetailSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer()
     class Meta:
         model = User
-        fields = ('email', 'username', 'profile',)
+        fields = ('email', 'username', 'is_superuser', 'profile',)

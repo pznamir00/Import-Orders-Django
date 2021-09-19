@@ -1,6 +1,6 @@
+from rest_framework.permissions import BasePermission
 from .models import Comment
 from django.db.models import Q
-from rest_framework.permissions import BasePermission
 from users.choices import UserRole
 from .choices import Status
 
@@ -23,14 +23,12 @@ class DenyForOtherClientsAndExecutors(BasePermission):
 
 
 class AllowCommentsOnlyForAdminOwnerOrExecutorOfOrder(BasePermission):
+    """
+    Check if user has access to order (as above but by 'parent_lookup_orders' field)
+    """
     def has_permission(self, request, view):
-        """
-        Check if user has access to order (as above but by 'parent_lookup_orders' field)
-        """
         order_pk = request.kwargs['parent_lookup_orders']
-        return request.user.is_superuser or Comment.objects.filter(
-            Q(order__owner=order_pk) | Q(order__executor=order_pk)
-        ).exists()
+        return request.user.is_superuser or Comment.objects.filter(order=order_pk).exists()
 
 
 
@@ -40,7 +38,7 @@ class DeleteOrUpdateOnlyForOwnerOrAdmin(BasePermission):
 
 
 
-class UpdateBaseOnRole(BasePermission):
+class UpdateBasedOnRole(BasePermission):
     update_methods = ('PUT', 'PATCH',)
     """
     Different users have an access to update dependent on status
