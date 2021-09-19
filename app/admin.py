@@ -3,5 +3,5 @@ from .models import *
 
 # Register your models here.
 admin.site.register(Order)
-admin.site.register(OrderLog)
-admin.site.register(OrderComment)
+admin.site.register(Log)
+admin.site.register(Comment)

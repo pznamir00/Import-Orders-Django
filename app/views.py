@@ -1,8 +1,8 @@
 from .choices import Status
-from rest_framework import viewsets, mixins
-from .models import Order, OrderLog, OrderComment
-from .serializers import OrderCommentSerializer, OrderLogSerializer, OrderSimpleSerializer, OrderDetailSerializer
-from .permissions import AllowOnlyForAdminOwnerOrExecutor, UpdateOnlyAdminOrExecutor, AllowCommentsOnlyForAdminOwnerOrExecutorOfOrder, DeleteOrUpdateOnlyForOwnerOrAdmin
+from rest_framework import viewsets
+from .models import Order, Log, Comment
+from .serializers import *
+from .permissions import *
 from rest_framework.permissions import IsAuthenticated
 from users.choices import UserRole
 from django.db.models import Case, When, Value, Q, Count, DateField, DurationField, F, Subquery, OuterRef
@@ -15,10 +15,18 @@ from django.contrib.auth.models import User
 
 
 class OrderViewSet(viewsets.ModelViewSet):
-    permission_classes = (IsAuthenticated, AllowOnlyForAdminOwnerOrExecutor, UpdateOnlyAdminOrExecutor,)
+    permission_classes = (IsAuthenticated, DenyForOtherClientsAndExecutors, UpdateBaseOnRole,)
 
     def get_serializer_class(self):
-        return OrderSimpleSerializer if self.action == 'list' else OrderDetailSerializer
+        if self.request.method in UpdateBaseOnRole.update_methods:
+            if hasattr('profile', self.request.user):
+                if self.request.user.profile == UserRole.PLANNER:
+                    return OrderPlannerUpdateSerializer
+                elif self.request.user.profile == UserRole.MANAGEMENT:
+                    return OrderManagementUpdateSerializer
+                elif self.request.user.profile == UserRole.PLANNER:
+                    return OrderExecutorUpdateSerializer
+        return OrderSimpleSerializer if self.action == 'list' else OrderSerializer
 
     def get_queryset(self):
         queryset = Order.objects.all()
@@ -34,6 +42,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             elif self.request.user.profile.role == UserRole.PLANNER:
                 #planner receives only orders with status=PAYMENT_AWAIT
                 return queryset.filter(status=Status.PAYMENT_AWAIT)
+            elif self.request.user.profile.role == UserRole.MANAGEMENT:
+                #managers receives only orders with status=APPROVAL_AWAIT
+                return queryset.filter(status=Status.APPROVAL_AWAIT)
             elif self.request.user.profile.role == UserRole.EXECUTOR:
                 #executor receives only orders that executes
                 queryset = queryset.filter(executor=self.request.user)
@@ -46,10 +57,10 @@ class OrderViewSet(viewsets.ModelViewSet):
         Stage does not matter while sorting by deadlines, because more important is execute order
         before deadline expired than execute older orders.
         """
-        return queryset.exclude(status__in=['5', '6']).annotate(
+        return queryset.exclude(status__in=[5, 6]).annotate(
             #select first orders with state as 'Await_for_payment_date'
             await_for_payment_first=Case(
-                When(status='4', then=Value(0)),
+                When(status=4, then=Value(0)),
                 default=Value(1)
             ),
             #select first orders that stage was set
@@ -60,15 +71,15 @@ class OrderViewSet(viewsets.ModelViewSet):
             #getting suitable num of Event base on stage
             #query gotta find appropriate OrderLog dependent to stage because has to get deadline from this row
             lookup_event=Case(
-                When(stage='1', then=Value('9')),
-                When(stage='2', then=Value('10')),
-                When(stage='3', then=Value('11')),
-                When(stage='4', then=Value('12')),
+                When(stage=1, then=Value(9)),
+                When(stage=2, then=Value(10)),
+                When(stage=3, then=Value(11)),
+                When(stage=4, then=Value(12)),
                 default=Value(None),
             ),
             #retrieve appropriate row and deadline from it
             deadline=Subquery(
-                OrderLog.objects.filter(
+                Log.objects.filter(
                     order=OuterRef('pk'),
                     event=OuterRef('lookup_event')
                 ).values('deadline'),
@@ -84,11 +95,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             'await_for_payment_first',
             'with_stage_first',
             'time_left'
+            '-priority'
         )
-
-    def update(self, request, *args, **kwargs):
-        #coming coon
-        pass
 
 
     """
@@ -103,7 +111,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         ).annotate(
             num_of_active_executing_orders=Count(
                 'executing_orders', 
-                filter=Q(executing_orders__status__in=['1', '2', '3', '4'])
+                filter=Q(executing_orders__status__in=[1, 2, 3, 4])
             )
         ).order_by(
             'num_of_active_executing_orders'
@@ -128,7 +136,7 @@ class OrderCommentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         order_pk = self.kwargs['parent_lookup_order']
-        return OrderComment.objects.filter(order=order_pk)
+        return Comment.objects.filter(order=order_pk)
 
 
 

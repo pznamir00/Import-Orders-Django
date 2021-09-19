@@ -1,16 +1,24 @@
-from .models import OrderComment
+from .models import Comment
 from django.db.models import Q
 from rest_framework.permissions import BasePermission
+from users.choices import UserRole
+from .choices import Status
 
 
 
-class AllowOnlyForAdminOwnerOrExecutor(BasePermission):
+class DenyForOtherClientsAndExecutors(BasePermission):
     def has_object_permission(self, request, view, obj):
         """
-        An access to data can get only people associated with order.
-        That are admin, owner (who created) and executor
+        Object is available for admins, planners, management, owner and assigned executor
+        An access is denied for other clients and executors
         """
-        return (obj.owner == request.user or obj.executor == request.user) or request.user.is_superuser
+        if request.user.is_superuser:
+            return True
+        if request.user.profile.role == UserRole.CLIENT and obj.owner != request.user:
+            return False
+        if request.user.profile.role == UserRole.EXECUTOR and obj.executor != request.user:
+            return False
+        return True
 
 
 
@@ -20,7 +28,7 @@ class AllowCommentsOnlyForAdminOwnerOrExecutorOfOrder(BasePermission):
         Check if user has access to order (as above but by 'parent_lookup_orders' field)
         """
         order_pk = request.kwargs['parent_lookup_orders']
-        return request.user.is_superuser or OrderComment.objects.filter(
+        return request.user.is_superuser or Comment.objects.filter(
             Q(order__owner=order_pk) | Q(order__executor=order_pk)
         ).exists()
 
@@ -32,15 +40,20 @@ class DeleteOrUpdateOnlyForOwnerOrAdmin(BasePermission):
 
 
 
-class UpdateOnlyAdminOrExecutor(BasePermission):
+class UpdateBaseOnRole(BasePermission):
     update_methods = ('PUT', 'PATCH',)
     """
-    Update is allowed only for executor (for changing a status etc.)
-    Admin of course has such option also
+    Different users have an access to update dependent on status
     """
     def has_object_permission(self, request, view, obj):
         if request.method in self.update_methods:
-            return obj.executor == request.user or request.user.is_superuser
+            if request.user.is_superuser:
+                return True
+            if obj.status == Status.APPROVAL_AWAIT and request.user.profile.role == UserRole.MANAGEMENT:
+                return True
+            if obj.status == Status.PAYMENT_AWAIT and request.user.profile.role == UserRole.PLANNER:
+                return True
+            return obj.status in [Status.NEW, Status.PROCESSING] and request.user.profile.role == UserRole.EXECUTOR
         return True
 
 
