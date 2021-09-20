@@ -48,7 +48,7 @@
             - <b>CRUD /api/orders/</b> - CRUD for orders<br/>
             (
                 - for updating accept only PATCH method,<br/>
-                - noteditable fields: title, content, owner and executor (unless admin is editing),<br/>
+                - not editable fields: title, content, owner and executor (unless admin is editing),<br/>
                 - when status = NEW, PROCESSING - executor can edit,<br/>
                 - when status = PAYMENT_AWAIT - planner can edit,<br/>
                 - when status = APPROVAL_AWAIT - manager can edit,<br/>
