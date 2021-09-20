@@ -31,15 +31,15 @@ class Origin(models.TextChoices):
 
 
 class Event(models.TextChoices):
-    CREATED = '1', 'Created'#
-    STARTED = '2', 'Started'#
-    PAYMENT_REQUESTED = '3', 'Requested for set payment date'#
-    PAYMENT_DATE_WAS_SET = '4', 'Payment date was set'#
-    APPROVAL_REQUESTED = '5', 'Requested for approval of the board'#
-    ACCEPTED_BY_BOARD = '6', 'Accepted by the board'#
-    FINISHED = '7', 'Finished'#
-    REJECTED = '8', 'Rejected'#
-    SET_PLAN_END_DATE = '9', 'Planning end date was set'#
+    CREATED = '1', 'Created'
+    STARTED = '2', 'Started'
+    PAYMENT_REQUESTED = '3', 'Requested for set payment date'
+    PAYMENT_DATE_WAS_SET = '4', 'Payment date was set'
+    APPROVAL_REQUESTED = '5', 'Requested for approval of the board'
+    ACCEPTED_BY_BOARD = '6', 'Accepted by the board'
+    FINISHED = '7', 'Finished'
+    REJECTED = '8', 'Rejected'
+    SET_PLAN_END_DATE = '9', 'Planning end date was set'
     SET_LOG_END_DATE = '10', 'Logistic end date was set'
     SET_TRANS_END_DATE = '11', 'Transport end date was set'
     SET_DONE_END_DATE = '12', 'Process end date was set'

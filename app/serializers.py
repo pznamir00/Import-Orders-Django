@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Order, Log, Comment
 from .choices import Status, Stage, Event
 from .helpers import create_log
+from .validators import CheckStageValidator, CheckStatusValidator
 
 
 
@@ -42,26 +43,13 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = '__all__'
         read_only_fields = ('owner',)
-        extra_kwargs = {
-            'title': { 'required': False },
-            'content': { 'required': False }
-        }
 
 
 
 
 
-class OrderPlannerUpdateSerializer(serializers.ModelSerializer):
-    payment_date = serializers.DateField(write_only=True)
-    
-    class Meta:
-        model = Order
-        fields = ('payment_date',)
-
-    def validate(self, data):
-        if 'payment_date' not in data:
-            raise serializers.ValidationError({ 'payment_date': 'This field is required' })
-        return data
+class OrderPlannerUpdateSerializer(serializers.Serializer):
+    payment_date = serializers.DateField(write_only=True, required=True)
 
     def update(self, instance, validated_data):
         #set payment date
@@ -75,22 +63,13 @@ class OrderPlannerUpdateSerializer(serializers.ModelSerializer):
 
 
 
-class OrderManagementUpdateSerializer(serializers.ModelSerializer):
-    agreement = serializers.BooleanField(write_only=True)
-    
-    class Meta:
-        model = Order
-        fields = ('agreement',)
-
-    def validate(self, data):
-        if 'agreement' not in data:
-            raise serializers.ValidationError({ 'agreement': 'This field is required' })
-        return data
+class OrderManagementUpdateSerializer(serializers.Serializer):
+    agreement = serializers.BooleanField(write_only=True, required=True)
 
     def update(self, instance, validated_data):
         agreement = validated_data.pop('agreement')
         create_log(instance, Event.ACCEPTED_BY_BOARD if agreement else Event.REJECTED)
-        new_status = 2 if agreement else 5
+        new_status = Status.PROCESSING if agreement else Status.REJECTED
         instance.status = new_status
         instance.save()
         return instance
@@ -105,40 +84,10 @@ class OrderExecutorUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ('status', 'stage', 'priority', 'origin', 'deadline',)
-
-    def validate(self, data):
-        instance = self.instance
-        #check the status
-        if 'status' in data:
-            if instance.status == Status.NEW:
-                if 'deadline' not in data:
-                    raise serializers.ValidationError({
-                        'status': 'For update field status to \'Processing\' you must pass deadline parameter for set stage automatically'
-                    })                  
-                if data['status'] != Status.PROCESSING:
-                    raise serializers.ValidationError({
-                        'status': 'Wrong value. You must pass 2 for this status'
-                    })
-            elif instance.status == Status.PROCESSING and data['status'] not in [Status.PAYMENT_AWAIT, Status.APPROVAL_AWAIT, Status.FINISHED]:
-                raise serializers.ValidationError({
-                    'status': 'Wrong value. You must pass 3, 4 or 6 for this status'
-                })
-        #check the stage
-        if 'stage' in data:
-            if 'deadline' not in data:
-                raise serializers.ValidationError({
-                    'stage': 'If you want to change stage, you must pass a deadline parameter for new stage'
-                })
-            try:
-                if int(instance.stage) + 1 != int(data['stage']):
-                    raise serializers.ValidationError({
-                        'stage': 'Wrong value. You must pass value ' + str(int(instance.stage) + 1) + ' for this stage'
-                    })
-            except TypeError as e:
-                raise serializers.ValidationError({
-                    'stage': 'You can\'t pass stage before status is \'Processing\' ' + str(e)
-                })
-        return data
+        validators = [
+            CheckStageValidator(), 
+            CheckStatusValidator()
+        ]
         
     def update(self, instance, validated_data):
         if 'status' in validated_data:
@@ -165,7 +114,13 @@ class OrderExecutorUpdateSerializer(serializers.ModelSerializer):
             stage_event is dict that keys are number of Stages and values are
             matched Events for logs.
             """
-            stage_event = { '1': '9', '2': '10', '3': '11', '4': '12', '5': '13' }
+            stage_event = { 
+                Stage.PLAN: Event.SET_PLAN_END_DATE, 
+                Stage.LOG: Event.SET_LOG_END_DATE, 
+                Stage.TRANS: Event.SET_TRANS_END_DATE, 
+                Stage.DONE: Event.SET_DONE_END_DATE, 
+                Stage.COMPL: Event.SET_COMPLAINT_END_DATE 
+            }
             create_log(
                 instance, 
                 stage_event[validated_data['stage']], 

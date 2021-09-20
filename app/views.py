@@ -17,7 +17,12 @@ from .helpers import create_log
 
 
 class OrderViewSet(viewsets.ModelViewSet):
-    permission_classes = (IsAuthenticated, DenyForOtherClientsAndExecutors, UpdateBasedOnRole,)
+    permission_classes = (
+        IsAuthenticated, 
+        PutMethodNotAllowed,
+        DenyForOtherClientsAndExecutors, 
+        UpdateBasedOnRole,
+    )
 
     def get_serializer_class(self):
         if self.request.method in UpdateBasedOnRole.update_methods:
@@ -58,7 +63,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         Stage does not matter while sorting by deadlines, because more important is execute order
         before deadline expired than execute older orders.
         """
-        return queryset.exclude(status__in=[5, 6]).annotate(
+        return queryset.exclude(status__in=['5', '6']).annotate(
             #select first orders with state as 'Await_for_payment_date'
             await_for_payment_first=Case(
                 When(status=4, then=Value(0)),
@@ -110,7 +115,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         ).annotate(
             num_of_active_executing_orders=Count(
                 'executing_orders', 
-                filter=Q(executing_orders__status__in=[1, 2, 3, 4])
+                filter=(~Q(executing_orders__status__in=['5', '6']))
             )
         ).order_by(
             'num_of_active_executing_orders'

@@ -39,7 +39,7 @@ class DeleteOrUpdateOnlyForOwnerOrAdmin(BasePermission):
 
 
 class UpdateBasedOnRole(BasePermission):
-    update_methods = ('PUT', 'PATCH',)
+    update_methods = ('PATCH',)
     """
     Different users have an access to update dependent on status
     """
@@ -54,6 +54,11 @@ class UpdateBasedOnRole(BasePermission):
             return obj.status in [Status.NEW, Status.PROCESSING] and request.user.profile.role == UserRole.EXECUTOR
         return True
 
+
+
+class PutMethodNotAllowed(BasePermission):
+    def has_permission(self, request, view):
+        return request.method != 'PUT'
 
 
 
