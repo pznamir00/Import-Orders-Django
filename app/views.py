@@ -1,5 +1,6 @@
 from .choices import Status, Event, Origin, Priority
 from rest_framework import viewsets, generics
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Order, Log, Comment
 from .serializers import *
@@ -149,7 +150,7 @@ class OrderCommentViewSet(viewsets.ModelViewSet):
 
 
 
-class StatusView(generics.RetrieveAPIView):
+class StatusView(APIView):
     def get(self, request):
         return Response(Status.choices)
 
@@ -157,7 +158,7 @@ class StatusView(generics.RetrieveAPIView):
 
 
 
-class PriorityView(generics.RetrieveAPIView):
+class PriorityView(APIView):
     def get(self, request):
         return Response(Priority.choices)
 
@@ -165,7 +166,7 @@ class PriorityView(generics.RetrieveAPIView):
 
 
 
-class StageView(generics.RetrieveAPIView):
+class StageView(APIView):
     def get(self, request):
         return Response(Stage.choices)
 
@@ -173,6 +174,6 @@ class StageView(generics.RetrieveAPIView):
 
 
 
-class OriginView(generics.RetrieveAPIView):
+class OriginView(APIView):
     def get(self, request):
         return Response(Origin.choices)
